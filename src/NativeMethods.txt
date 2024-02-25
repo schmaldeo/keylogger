@@ -1,6 +1,6 @@
 ﻿SetWindowsHookEx
-GetMessage
 CallNextHookEx
+GetMessage
 TranslateMessage
 DispatchMessage
 KBDLLHOOKSTRUCT

