@@ -1,0 +1,6 @@
+﻿SetWindowsHookEx
+GetMessage
+CallNextHookEx
+TranslateMessage
+DispatchMessage
+KBDLLHOOKSTRUCT
