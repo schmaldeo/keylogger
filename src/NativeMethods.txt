@@ -4,3 +4,4 @@ GetMessage
 TranslateMessage
 DispatchMessage
 KBDLLHOOKSTRUCT
+GetAsyncKeyState
