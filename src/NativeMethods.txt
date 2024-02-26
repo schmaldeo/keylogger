@@ -1,7 +1,17 @@
-﻿SetWindowsHookEx
+﻿// hooks
+SetWindowsHookEx
 CallNextHookEx
+
+// message loop
 GetMessage
 TranslateMessage
 DispatchMessage
+
+// keyboard stuff
 KBDLLHOOKSTRUCT
 GetAsyncKeyState
+GetKeyboardLayout
+
+// window stuff
+ShowWindow
+GetConsoleWindow
