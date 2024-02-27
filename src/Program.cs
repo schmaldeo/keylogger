@@ -84,6 +84,7 @@ public static class Program
         // TODO get locale with GetKeyboardLayout and alter what for example numbers return when shift is active
         // write the locale to file and only actually alter the keys' behaviour if the kb layout isn't weird with
         // what shift + numbers do otherwise assume default US kinda keyboard layout
+// TODO: instead of doing the caps lock and shift dumb shit in the switch just transform it accordingly after the switch to save like 50 lines of code
         var stringToWrite = kbStruct->vkCode switch
         {
             0x08 => " [BACKSPACE] ",
