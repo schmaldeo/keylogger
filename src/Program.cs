@@ -16,7 +16,7 @@ public static class Program
     // ReSharper restore InconsistentNaming
 
     private static readonly string PathToFile =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "klog.txt");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "klog.txt");
 
     private static readonly List<string> Buffer = new();
     private static readonly StreamWriter Writer = new(PathToFile, true);
