@@ -5,6 +5,7 @@ This is a keylogger making big use of [Microsoft's CsWin32 NuGet package](https:
 ## DISCLAIMER
 This program was made with educational purposes in mind.
 **I am not responsible for and do not condone any improper use of this software.**
+The author will not be held liable for any illegal activities.
 
 ## Technicalities
 The program installs a low level keyboard hook and then processes the messages. They then get mapped to human-readable
