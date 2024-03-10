@@ -2,7 +2,7 @@
 
 namespace klog;
 
-public class LogFile
+public static class LogFile
 {
     /// <summary>
     /// Writes an informational string to the log file if it's empty.

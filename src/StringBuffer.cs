@@ -1,6 +1,6 @@
 ﻿namespace klog;
 
-public class StringBuffer
+public static class StringBuffer
 {
     private static readonly List<string> Buffer = new();
     private const int Size = 10;
