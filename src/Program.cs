@@ -10,6 +10,7 @@ namespace klog;
 public static class Program
 {
     // ReSharper disable InconsistentNaming
+    // codes passed by the keyboard hook
     private const int KEYDOWN = 0x0100;
     private const int KEYUP = 0x0101;
     private const int SYSKEYDOWN = 0x0104;
