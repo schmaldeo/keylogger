@@ -6,9 +6,8 @@ namespace klog;
 public static class Keyboard
 {
     private const uint VK_CAPSLOCK = 0x14;
-    private const uint VK_SHIFT_LEFT = 0xA0;
-
-    private const uint VK_SHIFT_RIGHT = 0xA1;
+    private const uint VK_LSHIFT = 0xA0;
+    private const uint VK_RSHIFT = 0xA1;
 
     // reference https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
     private static readonly Dictionary<uint, string> VirtualKeyCodes = new()
@@ -229,7 +228,7 @@ public static class Keyboard
     {
         if (kbStruct->vkCode == VK_CAPSLOCK) capsLockActive = !capsLockActive;
 
-        if (kbStruct->vkCode == VK_SHIFT_LEFT || kbStruct->vkCode == VK_SHIFT_RIGHT) shiftActive = true;
+        if (kbStruct->vkCode == VK_LSHIFT || kbStruct->vkCode == VK_RSHIFT) shiftActive = true;
     }
 
     internal static unsafe string HandleKeyUp(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive)
@@ -246,7 +245,7 @@ public static class Keyboard
         };
 
         // checking for shift keyup
-        if (kbStruct->vkCode == VK_SHIFT_LEFT || kbStruct->vkCode == VK_SHIFT_RIGHT) shiftActive = false;
+        if (kbStruct->vkCode == VK_LSHIFT || kbStruct->vkCode == VK_RSHIFT) shiftActive = false;
 
         return stringToWrite;
     }
