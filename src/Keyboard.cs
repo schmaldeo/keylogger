@@ -5,6 +5,11 @@ namespace klog;
 
 public static class Keyboard
 {
+    private const uint VK_CAPSLOCK = 0x14;
+    private const uint VK_SHIFT_LEFT = 0xA0;
+
+    private const uint VK_SHIFT_RIGHT = 0xA1;
+
     // reference https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
     private static readonly Dictionary<uint, string> VirtualKeyCodes = new()
     {
@@ -161,10 +166,6 @@ public static class Keyboard
         { 0xDE, "'" }
     };
 
-    private const uint VK_CAPSLOCK = 0x14;
-    private const uint VK_SHIFT_LEFT = 0xA0;
-    private const uint VK_SHIFT_RIGHT = 0xA1;
-    
     /// <summary>
     ///     Gets current state of caps lock.
     /// </summary>
@@ -173,12 +174,12 @@ public static class Keyboard
     {
         return PInvoke.GetAsyncKeyState(0x14) != 0;
     }
-    
+
     /// <summary>
     ///     Gets the keyboard layout returned by GetKeyboardLayout function from user32.dll.
     /// </summary>
     /// <returns>
-    ///     Hex string containing the language identifier. You can read more about it here: 
+    ///     Hex string containing the language identifier. You can read more about it here:
     ///     https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-LCID/%5bMS-LCID%5d.pdf
     /// </returns>
     public static string GetKeyboardLayout()
@@ -187,8 +188,9 @@ public static class Keyboard
         var lcid = layout >> 16;
         return $"0x{lcid:X4}";
     }
-    
-    internal static unsafe string HandleKeyDown(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive, ref bool capsLockActive)
+
+    internal static unsafe string HandleKeyDown(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive,
+        ref bool capsLockActive)
     {
         var stringToWrite = GetStringToWrite(kbStruct, shiftActive, capsLockActive);
 
@@ -199,21 +201,15 @@ public static class Keyboard
 
     private static unsafe string GetStringToWrite(KBDLLHOOKSTRUCT* kbStruct, bool shiftActive, bool capsLockActive)
     {
-        
         if (VirtualKeyCodes.TryGetValue(kbStruct->vkCode, out var stringToWrite))
         {
             if (IsLetter(kbStruct->vkCode) && ShouldBeUppercase(shiftActive, capsLockActive))
-            {
                 return stringToWrite.ToUpper();
-            }
 
             return stringToWrite;
         }
-        
-        if (kbStruct->vkCode == VK_CAPSLOCK)
-        {
-            return capsLockActive ? " [CAPS LOCK OFF] " : " [CAPS LOCK ON] ";
-        }
+
+        if (kbStruct->vkCode == VK_CAPSLOCK) return capsLockActive ? " [CAPS LOCK OFF] " : " [CAPS LOCK ON] ";
 
         return stringToWrite ?? $"[CODE {kbStruct->vkCode}]";
     }
@@ -228,17 +224,12 @@ public static class Keyboard
         return (shiftActive || capsLockActive) && !(shiftActive && capsLockActive);
     }
 
-    private static unsafe void UpdateShiftAndCapsLockState(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive, ref bool capsLockActive)
+    private static unsafe void UpdateShiftAndCapsLockState(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive,
+        ref bool capsLockActive)
     {
-        if (kbStruct->vkCode == VK_CAPSLOCK)
-        {
-            capsLockActive = !capsLockActive;
-        }
+        if (kbStruct->vkCode == VK_CAPSLOCK) capsLockActive = !capsLockActive;
 
-        if (kbStruct->vkCode == VK_SHIFT_LEFT || kbStruct->vkCode == VK_SHIFT_RIGHT)
-        {
-            shiftActive = true;
-        }
+        if (kbStruct->vkCode == VK_SHIFT_LEFT || kbStruct->vkCode == VK_SHIFT_RIGHT) shiftActive = true;
     }
 
     internal static unsafe string HandleKeyUp(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive)
