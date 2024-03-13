@@ -7,7 +7,7 @@ public class LogBuffer : IEnumerable<string>
     private readonly List<string> _buffer = new();
     private readonly List<ILogger> _outputs = new();
 
-    public LogBuffer(uint maxSize = 10)
+    public LogBuffer(uint maxSize = 128)
     {
         MaxSize = maxSize;
     }
