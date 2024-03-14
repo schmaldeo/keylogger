@@ -85,7 +85,7 @@ public static class Program
     /// <returns></returns>
     private static BOOL CleanupHandler(uint ctrlType = 7)
     {
-        Buffer.Clear();
+        Buffer.Write();
         return true;
     }
 
