@@ -1,4 +1,6 @@
-﻿using Microsoft.Win32;
+﻿using System.Runtime.InteropServices;
+using System.Text;
+using Microsoft.Win32;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -112,6 +114,18 @@ public static class Program
         if (wsh.CreateShortcut(shortcutPath) is not IWshShortcut shortcut) return;
         shortcut.TargetPath = path;
         shortcut.Save();
+    }
+
+    private static unsafe string GetWindowTitle()
+    {
+        var handle = PInvoke.GetForegroundWindow();
+        var strLength = PInvoke.GetWindowTextLength(handle) + 1;
+        var buffer = stackalloc char[strLength];
+        if (PInvoke.GetWindowText(handle, buffer, strLength) > 0)
+        {
+            return Marshal.PtrToStringAuto((IntPtr)buffer) ?? string.Empty;
+        }
+        return string.Empty;
     }
 
     // ReSharper disable InconsistentNaming

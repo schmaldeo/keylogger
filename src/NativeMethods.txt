@@ -15,6 +15,9 @@ GetKeyboardLayout
 // window stuff
 ShowWindow
 GetConsoleWindow
+GetForegroundWindow
+GetWindowText
+GetWindowTextLength
 
 // console stuff
 SetConsoleCtrlHandler
