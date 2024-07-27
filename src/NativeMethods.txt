@@ -1,24 +1,27 @@
 ﻿// hooks
-SetWindowsHookEx
 CallNextHookEx
+SetWindowsHookEx
 SetWinEventHook
 
 // message loop
+DispatchMessage
 GetMessage
 TranslateMessage
-DispatchMessage
 
 // keyboard stuff
-KBDLLHOOKSTRUCT
 GetAsyncKeyState
 GetKeyboardLayout
+KBDLLHOOKSTRUCT
 
 // window stuff
-ShowWindow
+CreateWindowEx
+DefWindowProc
 GetConsoleWindow
 GetForegroundWindow
 GetWindowText
 GetWindowTextLength
+RegisterClass
+ShowWindow
 
 // console stuff
 SetConsoleCtrlHandler
