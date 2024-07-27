@@ -165,6 +165,35 @@ public static class Keyboard
         { 0xDE, "'" }
     };
 
+    internal static unsafe string HandleKeyDown(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive,
+        ref bool capsLockActive)
+    {
+        var stringToWrite = GetStringToWrite(kbStruct, shiftActive, capsLockActive);
+
+        UpdateShiftAndCapsLockState(kbStruct, ref shiftActive, ref capsLockActive);
+
+        return stringToWrite;
+    }
+
+    internal static unsafe string HandleKeyUp(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive)
+    {
+        var stringToWrite = kbStruct->vkCode switch
+        {
+            0xA0 => " [LEFT SHIFT UP] ",
+            0xA1 => " [RIGHT SHIFT UP] ",
+            0xA2 => " [LEFT CONTROL UP] ",
+            0xA3 => " [RIGHT CONTROL UP] ",
+            0xA4 => " [LEFT ALT UP] ",
+            0xA5 => " [RIGHT ALT UP] ",
+            _ => ""
+        };
+
+        // checking for shift keyup
+        if (kbStruct->vkCode == VK_LSHIFT || kbStruct->vkCode == VK_RSHIFT) shiftActive = false;
+
+        return stringToWrite;
+    }
+
     /// <summary>
     ///     Gets current state of caps lock.
     /// </summary>
@@ -186,16 +215,6 @@ public static class Keyboard
         var layout = PInvoke.GetKeyboardLayout(0);
         var lcid = layout >> 16;
         return $"0x{lcid:X4}";
-    }
-
-    internal static unsafe string HandleKeyDown(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive,
-        ref bool capsLockActive)
-    {
-        var stringToWrite = GetStringToWrite(kbStruct, shiftActive, capsLockActive);
-
-        UpdateShiftAndCapsLockState(kbStruct, ref shiftActive, ref capsLockActive);
-
-        return stringToWrite;
     }
 
     private static unsafe string GetStringToWrite(KBDLLHOOKSTRUCT* kbStruct, bool shiftActive, bool capsLockActive)
@@ -229,24 +248,5 @@ public static class Keyboard
         if (kbStruct->vkCode == VK_CAPSLOCK) capsLockActive = !capsLockActive;
 
         if (kbStruct->vkCode == VK_LSHIFT || kbStruct->vkCode == VK_RSHIFT) shiftActive = true;
-    }
-
-    internal static unsafe string HandleKeyUp(KBDLLHOOKSTRUCT* kbStruct, ref bool shiftActive)
-    {
-        var stringToWrite = kbStruct->vkCode switch
-        {
-            0xA0 => " [LEFT SHIFT UP] ",
-            0xA1 => " [RIGHT SHIFT UP] ",
-            0xA2 => " [LEFT CONTROL UP] ",
-            0xA3 => " [RIGHT CONTROL UP] ",
-            0xA4 => " [LEFT ALT UP] ",
-            0xA5 => " [RIGHT ALT UP] ",
-            _ => ""
-        };
-
-        // checking for shift keyup
-        if (kbStruct->vkCode == VK_LSHIFT || kbStruct->vkCode == VK_RSHIFT) shiftActive = false;
-
-        return stringToWrite;
     }
 }

