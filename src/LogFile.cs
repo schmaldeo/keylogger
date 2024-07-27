@@ -8,7 +8,6 @@ public class LogFile : ILogger
     {
         PathToFile = path;
         Writer = new StreamWriter(path, true);
-        WriteSystemInfo();
     }
 
     private string PathToFile { get; }

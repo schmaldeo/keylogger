@@ -35,16 +35,18 @@ public static class Program
 
         var logFile =
             new LogFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "klog.txt"));
+        logFile.WriteSystemInfo();
         Buffer.AddOutput(logFile);
 
-        // TODO check something weird going on
         _capsLockActive = Keyboard.GetCapsLockState();
 
         SystemEvents.PowerModeChanged += (_, e) =>
         {
+            Buffer.Add("PowerModeChanged");
             if (e.Mode != PowerModes.Resume) return;
             _capsLockActive = Keyboard.GetCapsLockState();
             logFile.WriteSystemInfo();
+            Buffer.Add("PowerModes.Resume");
         };
 
         // install a keyboard hook
