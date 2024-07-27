@@ -2,6 +2,7 @@
 using Microsoft.Win32;
 using Windows.Win32;
 using Windows.Win32.Foundation;
+using Windows.Win32.UI.Accessibility;
 using Windows.Win32.UI.WindowsAndMessaging;
 using IWshRuntimeLibrary;
 using File = System.IO.File;
@@ -53,6 +54,15 @@ public static class Program
         _kbHook = PInvoke.SetWindowsHookEx(
             WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardProcedure, null, 0);
 
+        PInvoke.SetWinEventHook(
+            EVENT_SYSTEM_FOREGROUND,
+            EVENT_SYSTEM_FOREGROUND,
+            HMODULE.Null,
+            LogNewWindowTitle,
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+
         // set up message queue
         MSG msg = new();
         while (PInvoke.GetMessage(&msg, new HWND(), 0, 0))
@@ -87,7 +97,16 @@ public static class Program
 
         return PInvoke.CallNextHookEx(_kbHook, code, wParam, lParam);
     }
-    
+
+    /// <summary>
+    ///     Adds the title of the newly switched window to the buffer.
+    /// </summary>
+    private static void LogNewWindowTitle(HWINEVENTHOOK hWinEventHook, uint e, HWND hwnd, int idObject,
+        int idChild, uint idEventThread, uint dwmsEventTime)
+    {
+        Buffer.Add($"{GetWindowTitle(hwnd)}{Environment.NewLine}");
+    }
+
     /// <summary>
     /// Handler for SetConsoleCtrlHandler. Cleanup when program is closing.
     /// </summary>
@@ -124,9 +143,8 @@ public static class Program
         shortcut.Save();
     }
 
-    private static unsafe string GetWindowTitle()
+    private static unsafe string GetWindowTitle(HWND handle)
     {
-        var handle = PInvoke.GetForegroundWindow();
         var strLength = PInvoke.GetWindowTextLength(handle) + 1;
         var buffer = stackalloc char[strLength];
         if (PInvoke.GetWindowText(handle, buffer, strLength) > 0)
@@ -142,6 +160,12 @@ public static class Program
     private const int KEYUP = 0x0101;
 
     private const int SYSKEYDOWN = 0x0104;
+
+    // reference https://referencesource.microsoft.com/#UIAutomationClient/MS/Win32/NativeMethods.cs,f66435563fb4ebdf,references
+    private const int WINEVENT_OUTOFCONTEXT = 0x0000;
+    private const int WINEVENT_SKIPOWNPROCESS = 0x0002;
+
+    private const int EVENT_SYSTEM_FOREGROUND = 0x0003;
     // ReSharper restore InconsistentNaming
 }
 

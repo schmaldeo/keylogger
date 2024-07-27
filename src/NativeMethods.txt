@@ -1,6 +1,7 @@
 ﻿// hooks
 SetWindowsHookEx
 CallNextHookEx
+SetWinEventHook
 
 // message loop
 GetMessage
