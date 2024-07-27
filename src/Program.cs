@@ -22,16 +22,11 @@ public static class Program
         HideWindow();
 
         // user logout/system shutdown events
-        SystemEvents.SessionEnding += (_, _) =>
-        {
-            _ = CleanupHandler();
-        };
+        SystemEvents.SessionEnding += (_, _) => { _ = CleanupHandler(); };
         // ctrl+c, ctrl+break, program close events
         // could use this to handle logout/shutdown, but it's much easier to use SystemEvents.SessionEnding because
         // https://learn.microsoft.com/en-us/windows/console/setconsolectrlhandler#remarks
         PInvoke.SetConsoleCtrlHandler(CleanupHandler, true);
-
-        AddToStartup();
 
         var logFile =
             new LogFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "klog.txt"));
@@ -54,6 +49,7 @@ public static class Program
         _kbHook = PInvoke.SetWindowsHookEx(
             WINDOWS_HOOK_ID.WH_KEYBOARD_LL, KeyboardProcedure, null, 0);
 
+        // install alt-tab hook
         PInvoke.SetWinEventHook(
             EVENT_SYSTEM_FOREGROUND,
             EVENT_SYSTEM_FOREGROUND,
@@ -62,6 +58,8 @@ public static class Program
             0,
             0,
             WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+
+        AddToStartup();
 
         // set up message queue
         MSG msg = new();
