@@ -8,6 +8,7 @@ public class LogFile : ILogger
     {
         PathToFile = path;
         Writer = new StreamWriter(path, true);
+        WriteSystemInfo();
     }
 
     private string PathToFile { get; }
@@ -20,12 +21,10 @@ public class LogFile : ILogger
     }
 
     /// <summary>
-    ///     Writes an informational string to the log file if it's empty.
+    ///     Writes an informational string to the log file.
     /// </summary>
-    public void WriteSystemInfo()
+    private void WriteSystemInfo()
     {
-        if (new FileInfo(PathToFile).Length != 0) return;
-
         Writer.Write(
             $"https://github.com/schmaldeo/keylogger v{Assembly.GetEntryAssembly()!.GetName().Version} {DateTime.Now}{Environment.NewLine}{Environment.NewLine}" +
             $"If you see something like: [CODE: xxxx], you can check what key the code represents on " +
@@ -37,6 +36,16 @@ public class LogFile : ILogger
             $"need to find out yourself what keyboard layout it is and then just find out yourself what " +
             $"the output was, as you can clearly see when the modifier keys are pressed and released, " +
             $"as well as what was typed in while those were active.{Environment.NewLine}{Environment.NewLine}");
+        Writer.Flush();
+    }
+
+    /// <summary>
+    ///     Writes a string with current time to the log file.
+    /// </summary>
+    public void WriteStartTime()
+    {
+        Writer.Write(
+            $"{Environment.NewLine}{Environment.NewLine}{DateTime.Now}{Environment.NewLine}{Environment.NewLine}");
         Writer.Flush();
     }
 }

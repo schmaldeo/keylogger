@@ -16,7 +16,6 @@ public static class Program
     private static bool _capsLockActive;
     private static bool _shiftActive;
 
-    // TODO on start write current info, add a startup option to write plain text with no alt, ctrl, shift
     public static unsafe void Main()
     {
         HideWindow();
@@ -35,18 +34,18 @@ public static class Program
 
         var logFile =
             new LogFile(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "klog.txt"));
-        logFile.WriteSystemInfo();
+        logFile.WriteStartTime();
         Buffer.AddOutput(logFile);
 
         _capsLockActive = Keyboard.GetCapsLockState();
 
+        // system resumed from sleep
         SystemEvents.PowerModeChanged += (_, e) =>
         {
-            Buffer.Add("PowerModeChanged");
             if (e.Mode != PowerModes.Resume) return;
+            // this line avoids wrong detection of caps lock state after the system goes to sleep
             _capsLockActive = Keyboard.GetCapsLockState();
-            logFile.WriteSystemInfo();
-            Buffer.Add("PowerModes.Resume");
+            logFile.WriteStartTime();
         };
 
         // install a keyboard hook
