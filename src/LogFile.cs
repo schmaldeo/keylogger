@@ -8,7 +8,7 @@ public class LogFile : ILogger
     {
         PathToFile = path;
         Writer = new StreamWriter(path, true);
-        WriteInfo();
+        WriteSystemInfo();
     }
 
     private string PathToFile { get; }
@@ -23,7 +23,7 @@ public class LogFile : ILogger
     /// <summary>
     ///     Writes an informational string to the log file if it's empty.
     /// </summary>
-    private void WriteInfo()
+    public void WriteSystemInfo()
     {
         if (new FileInfo(PathToFile).Length != 0) return;
 
