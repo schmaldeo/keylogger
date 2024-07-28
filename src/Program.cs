@@ -1,10 +1,10 @@
 ﻿using System.Runtime.InteropServices;
-using Microsoft.Win32;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Accessibility;
 using Windows.Win32.UI.WindowsAndMessaging;
 using IWshRuntimeLibrary;
+using Microsoft.Win32;
 using File = System.IO.File;
 
 namespace klog;
@@ -98,7 +98,10 @@ public static class Program
     private static void LogNewWindowTitle(HWINEVENTHOOK hWinEventHook, uint e, HWND hwnd, int idObject,
         int idChild, uint idEventThread, uint dwmsEventTime)
     {
-        Buffer.Add($"{GetWindowTitle(hwnd)}{Environment.NewLine}");
+        var title = GetWindowTitle(hwnd);
+        Buffer.Add(title == string.Empty
+            ? $"No window in focus{Environment.NewLine}"
+            : $"{GetWindowTitle(hwnd)}{Environment.NewLine}");
     }
 
     /// <summary>
@@ -135,7 +138,7 @@ public static class Program
     }
 
     /// <summary>
-    ///      Gets the title of a window based on its <c>HWND</c>
+    ///     Gets the title of a window based on its <c>HWND</c>
     /// </summary>
     /// <param name="handle"><c>HWND</c> to be checked</param>
     /// <returns>Title of the window</returns>
@@ -144,14 +147,12 @@ public static class Program
         var strLength = PInvoke.GetWindowTextLength(handle) + 1;
         var buffer = stackalloc char[strLength];
         if (PInvoke.GetWindowText(handle, buffer, strLength) > 0)
-        {
             return Marshal.PtrToStringAuto((IntPtr)buffer) ?? string.Empty;
-        }
         return string.Empty;
     }
 
     /// <summary>
-    ///     Creates a hidden window to catch <c>WM_CLOSE</c> message and use it in <see cref="WindowProcedure"/>.
+    ///     Creates a hidden window to catch <c>WM_CLOSE</c> message and use it in <see cref="WindowProcedure" />.
     /// </summary>
     private static unsafe void CreateHiddenWindow()
     {
@@ -184,10 +185,7 @@ public static class Program
     /// </summary>
     private static LRESULT WindowProcedure(HWND hwnd, uint uMsg, WPARAM wParam, LPARAM lParam)
     {
-        if (uMsg == WM_CLOSE)
-        {
-            HandleCleanup();
-        }
+        if (uMsg == WM_CLOSE) HandleCleanup();
         return PInvoke.DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
 
